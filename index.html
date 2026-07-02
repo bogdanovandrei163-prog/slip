@@ -71,6 +71,31 @@
     audio { width: 200px; margin: 4px 0; }
     .search-results { background: white; border-radius: 12px; margin-bottom: 10px; }
     .search-result-item { display: flex; align-items: center; padding: 12px; border-bottom: 0.5px solid #e5e5ea; cursor: pointer; }
+
+    .date-separator {
+      text-align: center;
+      color: #8e8e93;
+      font-size: 13px;
+      margin: 12px 0 8px;
+      font-weight: 500;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #c7c7cc;
+      margin-left: 2px;
+    }
+    .status-dot.read {
+      background: #007aff;
+    }
+    .status-dots {
+      display: flex;
+      gap: 2px;
+      margin-left: 4px;
+    }
   </style>
 </head>
 <body>
@@ -377,13 +402,20 @@
   // ========== ЧАТЫ ==========
   function renderChats(container) {
     container.innerHTML = `
-      <h2 style="font-size:28px; margin-bottom:16px;">Чаты</h2>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2 style="font-size:28px;">Чаты</h2>
+        <button class="ios-btn secondary" id="createGroupChatBtn" style="width:auto; padding:10px; font-size:24px;">＋</button>
+      </div>
       <div class="search-box" style="margin-bottom:12px;">
         <input class="ios-input" id="searchUserInput" placeholder="🔍 Поиск">
         <div id="searchResults" class="search-results" style="display:none;"></div>
       </div>
       <div id="chatsList"></div>
     `;
+
+    // Кнопка создания группового чата
+    document.getElementById('createGroupChatBtn').addEventListener('click', openCreateGroupChatModal);
+
     const searchInput = $('#searchUserInput');
     const searchResults = $('#searchResults');
     let searchTimeout;
@@ -470,6 +502,45 @@
       });
   }
 
+  // Создание группового чата
+  async function openCreateGroupChatModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+    const usersSnap = await db.collection('users').get();
+    const otherUsers = [];
+    usersSnap.forEach(doc => {
+      if (doc.id !== currentUser.id) otherUsers.push({ id: doc.id, ...doc.data() });
+    });
+    overlay.innerHTML = `
+      <div class="modal-sheet">
+        <h3>Новый групповой чат</h3>
+        <input class="ios-input" id="groupNameInput" placeholder="Название группы">
+        <p>Выберите участников:</p>
+        <div id="groupParticipantsSelect" style="max-height:150px; overflow-y:auto; margin-bottom:12px;">
+          ${otherUsers.map(u => `<label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" value="${u.id}"> ${u.name} (${u.phone})</label>`).join('<br>')}
+          ${otherUsers.length===0 ? '<p style="color:#8e8e93;">Нет других пользователей.</p>' : ''}
+        </div>
+        <button class="ios-btn" id="saveGroupChatBtn">Создать</button>
+        <button class="ios-btn secondary" id="closeGroupChatModal">Отмена</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#closeGroupChatModal').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('#saveGroupChatBtn').addEventListener('click', async () => {
+      const groupName = overlay.querySelector('#groupNameInput').value.trim() || 'Группа';
+      const checks = [...overlay.querySelectorAll('#groupParticipantsSelect input:checked')].map(cb => cb.value);
+      if (checks.length === 0) return alert('Выберите хотя бы одного участника');
+      await db.collection('chats').add({
+        participants: [currentUser.id, ...checks],
+        isGroup: true,
+        groupName: groupName
+      });
+      overlay.remove();
+    });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  }
+
   async function createOrOpenChat(targetUserId) {
     const existing = await db.collection('chats')
       .where('participants', 'array-contains', currentUser.id)
@@ -504,7 +575,7 @@
           <div class="avatar" id="chatPartnerAvatar" style="width:36px; height:36px;"></div>
           <div style="flex:1"><strong id="chatPartnerName"></strong></div>
         </div>
-        <div id="messagesContainer" style="flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column-reverse;"></div>
+        <div id="messagesContainer" style="flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column-reverse; gap: 0;"></div>
         <div style="padding:8px; border-top:0.5px solid #e5e5ea; display:flex; gap:6px; align-items:center; background: #f9f9f9;">
           <button class="ios-btn secondary" id="attachMediaBtn" style="width:auto; padding:10px;">📎</button>
           <input class="ios-input" id="messageInput" placeholder="Сообщение..." style="flex:1; margin-bottom:0;">
@@ -540,34 +611,71 @@
     const container = document.getElementById('messagesContainer');
     let initialLoad = true;
     chatUnsubscribe = db.collection('chats').doc(chatId).collection('messages')
-      .orderBy('time', 'asc')  // старые первыми, новые последними
+      .orderBy('time', 'asc')
       .onSnapshot(snapshot => {
         if (initialLoad) {
           container.innerHTML = '';
+          let lastDate = null;
           snapshot.forEach(doc => {
             const msg = { id: doc.id, ...doc.data() };
+            const msgDate = new Date(msg.time?.toDate());
+            const dateStr = msgDate.toLocaleDateString();
+            if (dateStr !== lastDate) {
+              lastDate = dateStr;
+              const separator = document.createElement('div');
+              separator.className = 'date-separator';
+              separator.textContent = formatDateSeparator(msgDate);
+              container.appendChild(separator);
+            }
             renderMessage(msg, container);
           });
-          // После column-reverse скролл вверх, чтобы видеть новые сообщения
           container.scrollTop = 0;
           initialLoad = false;
         } else {
-          // Обрабатываем только добавленные сообщения
           snapshot.docChanges().forEach(change => {
             if (change.type === 'added') {
               const msg = { id: change.doc.id, ...change.doc.data() };
               const bubble = renderMessage(msg, null);
               // Вставляем в начало контейнера (так как column-reverse)
-              container.insertBefore(bubble, container.firstChild);
-              // Прокручиваем вверх, чтобы показать новое сообщение
-              container.scrollTop = 0;
-              if (msg.sender !== currentUser.id && document.hidden) {
-                showMessageNotification(msg);
+              if (bubble) {
+                // Проверяем, нужен ли разделитель даты перед этим сообщением
+                const msgDate = new Date(msg.time?.toDate());
+                const dateStr = msgDate.toLocaleDateString();
+                const firstChild = container.firstChild;
+                if (firstChild && firstChild.className === 'date-separator') {
+                  const prevDate = firstChild.textContent;
+                  if (prevDate !== formatDateSeparator(msgDate)) {
+                    const newSep = document.createElement('div');
+                    newSep.className = 'date-separator';
+                    newSep.textContent = formatDateSeparator(msgDate);
+                    container.insertBefore(newSep, container.firstChild);
+                  }
+                } else if (!firstChild || firstChild.className !== 'date-separator') {
+                  const newSep = document.createElement('div');
+                  newSep.className = 'date-separator';
+                  newSep.textContent = formatDateSeparator(msgDate);
+                  container.insertBefore(newSep, container.firstChild);
+                }
+                container.insertBefore(bubble, container.firstChild);
+                container.scrollTop = 0;
+                if (msg.sender !== currentUser.id && document.hidden) {
+                  showMessageNotification(msg);
+                }
               }
             }
           });
         }
       });
+  }
+
+  function formatDateSeparator(date) {
+    const now = new Date();
+    const today = now.toLocaleDateString();
+    const yesterday = new Date(now.setDate(now.getDate() - 1)).toLocaleDateString();
+    const msgDate = date.toLocaleDateString();
+    if (msgDate === today) return 'Сегодня';
+    if (msgDate === yesterday) return 'Вчера';
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   }
 
   function renderMessage(msg, container) {
@@ -589,10 +697,23 @@
     if (msg.replyTo && msg.replyToText) {
       content = `<div style="font-size:12px; opacity:0.7; border-left:2px solid #007aff; padding-left:6px; margin-bottom:4px;">↩ ${msg.replyToText}</div>` + content;
     }
+
+    // Статус кружочки
+    let statusHTML = '';
+    if (isMy) {
+      if (msg.status === 'read') {
+        statusHTML = '<div class="status-dots"><span class="status-dot read"></span><span class="status-dot read"></span></div>';
+      } else if (msg.status === 'delivered') {
+        statusHTML = '<div class="status-dots"><span class="status-dot"></span><span class="status-dot"></span></div>';
+      } else {
+        statusHTML = '<div class="status-dots"><span class="status-dot"></span></div>';
+      }
+    }
+
     bubble.innerHTML = content + `
       <div class="message-meta">
         <span>${new Date(msg.time?.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-        <span class="message-status">${isMy ? getStatusIcon(msg.status) : ''}</span>
+        ${statusHTML}
       </div>`;
 
     if (msg.reactions && msg.reactions.length > 0) {
@@ -618,12 +739,6 @@
       container.appendChild(bubble);
     }
     return bubble;
-  }
-
-  function getStatusIcon(status) {
-    if (status === 'read') return '<span style="color:#007aff;">✔✔</span>';
-    if (status === 'delivered') return '<span style="color:#8e8e93;">✔✔</span>';
-    return '<span style="color:#8e8e93;">✔</span>';
   }
 
   function showContextMenu(e, msg, bubble) {
@@ -773,7 +888,7 @@
     await batch.commit();
   }
 
-  // ========== ПРОФИЛЬ (с датой рождения, переключателями) ==========
+  // ========== ПРОФИЛЬ ==========
   function renderProfile(container) {
     if (!currentUser) return;
     const u = currentUser;
