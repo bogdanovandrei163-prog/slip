@@ -64,8 +64,9 @@
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     video { width: 100%; max-width: 200px; border-radius: 20px; background: #000; margin: 10px 0; }
 
-    #tabContent { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .chat-screen { flex: 1; display: flex; flex-direction: column; background: #fff; height: 100%; }
+    /* ЧАТ – жёсткая фиксация */
+    #tabContent { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+    .chat-screen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; background: #fff; }
     .chat-header { padding: 12px 16px; border-bottom: 0.5px solid #e5e5ea; display: flex; align-items: center; gap: 10px; background: #f9f9f9; flex-shrink: 0; }
     .chat-header .user-info { flex: 1; }
     .chat-header .user-status { font-size: 12px; color: #8e8e93; margin-top: 2px; }
@@ -88,6 +89,13 @@
     .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c7c7cc; margin-left: 2px; }
     .status-dot.read { background: #007aff; }
     .status-dots { display: flex; gap: 2px; margin-left: 4px; }
+    .chat-textarea {
+      flex: 1; padding: 10px 14px; background: #fff; border: 1px solid #e5e5ea;
+      border-radius: 20px; font-size: 16px; outline: none; resize: none;
+      min-height: 40px; max-height: 120px; overflow-y: auto; line-height: 1.4;
+    }
+
+    /* Остальные вспомогательные стили (галерея, индикатор) */
     .user-profile-card { text-align: center; }
     .large-avatar { width: 100px; height: 100px; border-radius: 20px; background-size: cover; background-position: center; margin: 0 auto 16px; }
     .online-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #34c759; margin-right: 4px; }
@@ -96,15 +104,11 @@
     .gallery-image { max-width: 90%; max-height: 80%; border-radius: 20px; object-fit: contain; }
     .gallery-controls { position: absolute; bottom: 20px; display: flex; gap: 20px; }
     .gallery-controls button { background: rgba(255,255,255,0.2); border: none; color: white; font-size: 24px; width: 44px; height: 44px; border-radius: 50%; }
-    .chat-textarea {
-      flex: 1; padding: 10px 14px; background: #fff; border: 1px solid #e5e5ea;
-      border-radius: 20px; font-size: 16px; outline: none; resize: none;
-      min-height: 40px; max-height: 120px; overflow-y: auto; line-height: 1.4;
-    }
   </style>
 </head>
 <body>
 <div class="app-container" id="appContainer">
+  <!-- Сайдбар и оверлей -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <div class="sidebar" id="sidebar">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -118,6 +122,7 @@
     <div class="sidebar-item" data-tab="settings"><span>👤</span> Настройки</div>
   </div>
 
+  <!-- Экраны входа/регистрации -->
   <div class="screen active" id="loginScreen">
     <h2 style="font-size:28px; font-weight:700; margin:40px 0 8px;">Вход</h2>
     <input class="ios-input" type="tel" id="loginPhone" placeholder="+71234567890">
@@ -136,6 +141,7 @@
     <button class="ios-btn" id="registerBtn">Зарегистрироваться</button>
   </div>
 
+  <!-- Главный экран -->
   <div class="screen" id="mainScreen">
     <div id="tabContent"></div>
   </div>
@@ -163,6 +169,7 @@
   let chatUnsubscribe = null, currentChatId = null, currentPartnerId = null;
   let lastDate = null;
 
+  // Сайдбар
   const sidebar = document.getElementById('sidebar');
   const sidebarOverlay = document.getElementById('sidebarOverlay');
   function openSidebar() { sidebar.classList.add('open'); sidebarOverlay.classList.add('show'); }
@@ -301,6 +308,7 @@
     }
   }
 
+  // ========== НАПОМИНАНИЯ ==========
   function renderReminders(body) {
     body.innerHTML = `
       <button class="ios-btn" id="addReminderBtn">+ Новое напоминание</button>
@@ -378,6 +386,7 @@
     }, 5000);
   }
 
+  // ========== ЗАДАЧИ ==========
   function renderTasks(body) {
     body.innerHTML = `
       <button class="ios-btn" id="addTaskBtn">+ Новая задача</button>
@@ -443,6 +452,7 @@
     overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   }
 
+  // ========== ЧАТЫ ==========
   function renderChats(body) {
     body.innerHTML = `
       <div style="margin-bottom:12px;">
@@ -580,6 +590,7 @@
     currentChatId = chatId;
     const container = $('#tabContent');
     container.classList.add('chat-open');
+    // Абсолютное позиционирование гарантирует, что чат займёт весь tabContent и не будет скролла всей страницы
     container.innerHTML = `
       <div class="chat-screen" id="chatScreen">
         <div class="chat-header" id="chatHeader">
@@ -823,12 +834,11 @@
   }
 
   function appendMessage(msg, container, isInitial) {
-    // Исправлено: проверка на null для времени
     let msgDate;
     if (msg.time && msg.time.toDate) {
       msgDate = new Date(msg.time.toDate());
     } else {
-      msgDate = new Date(); // fallback, если серверный timestamp ещё не пришёл
+      msgDate = new Date();
     }
     const dateStr = msgDate.toLocaleDateString();
     if (isInitial) {
@@ -886,7 +896,6 @@
       }
     }
 
-    // Исправлено: проверка на null для времени
     const timeObj = msg.time && msg.time.toDate ? new Date(msg.time.toDate()) : new Date();
     bubble.innerHTML = content + `<div class="message-meta"><span>${timeObj.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>${statusHTML}</div>`;
     if (msg.reactions?.length) {
@@ -1039,6 +1048,7 @@
     updateUnreadBadge();
   }
 
+  // ========== ПРОФИЛЬ ==========
   function renderProfile(body) {
     if (!currentUser) return;
     const u = currentUser;
