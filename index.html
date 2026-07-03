@@ -13,7 +13,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
-    /* === Тот же CSS, что и в вашем коде === */
+    /* === Тот же CSS, что и раньше === */
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
     body { background: #000; min-height: 100dvh; display: flex; justify-content: center; align-items: center; }
     .app-container { width: 100%; min-height: 100dvh; background: #f2f2f7; display: flex; flex-direction: column; position: relative; overflow: hidden; }
@@ -547,15 +547,15 @@
             const msg = { id: doc.id, ...doc.data() };
             appendMessage(msg, container, true);
           });
-          requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
-          setTimeout(() => { container.scrollTop = container.scrollHeight; }, 150);
+          // Один вызов скролла после загрузки
+          setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
           initialLoad = false;
         } else {
           snapshot.docChanges().forEach(change => {
             if (change.type === 'added') {
               const msg = { id: change.doc.id, ...change.doc.data() };
               appendMessage(msg, container, false);
-              requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
+              container.scrollTop = container.scrollHeight;
               if (msg.sender !== currentUser.id && document.hidden) {
                 showMessageNotification(msg);
               }
@@ -569,8 +569,39 @@
       });
   }
 
-  function appendMessage(msg, container, isInitial) { /* ... */ }
-  function formatDateSeparator(date) { /* ... */ }
+  function appendMessage(msg, container, isInitial) {
+    const msgDate = new Date(msg.time?.toDate());
+    const dateStr = msgDate.toLocaleDateString();
+    if (isInitial) {
+      if (dateStr !== lastDate) {
+        lastDate = dateStr;
+        const sep = document.createElement('div'); sep.className = 'date-separator'; sep.textContent = formatDateSeparator(msgDate);
+        container.appendChild(sep);
+      }
+    } else {
+      const last = container.lastElementChild;
+      if (last && last.className === 'date-separator') {
+        if (last.textContent !== formatDateSeparator(msgDate)) {
+          const sep = document.createElement('div'); sep.className = 'date-separator'; sep.textContent = formatDateSeparator(msgDate);
+          container.appendChild(sep);
+        }
+      } else if (!last || last.className !== 'date-separator') {
+        const sep = document.createElement('div'); sep.className = 'date-separator'; sep.textContent = formatDateSeparator(msgDate);
+        container.appendChild(sep);
+      }
+    }
+    renderMessage(msg, container);
+  }
+
+  function formatDateSeparator(date) {
+    const now = new Date();
+    const today = now.toLocaleDateString();
+    const yesterday = new Date(now.setDate(now.getDate() - 1)).toLocaleDateString();
+    const msgDate = date.toLocaleDateString();
+    if (msgDate === today) return 'Сегодня';
+    if (msgDate === yesterday) return 'Вчера';
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
 
   function renderMessage(msg, container) {
     const isMy = msg.sender === currentUser.id;
@@ -650,30 +681,18 @@
     const container = document.getElementById('messagesContainer');
     if (container) {
       setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
-      requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
     }
   }
 
   async function markMessagesAsRead(chatId) {
-    // Помечаем входящие сообщения как прочитанные
-    const incoming = await db.collection('chats').doc(chatId).collection('messages')
+    const msgs = await db.collection('chats').doc(chatId).collection('messages')
       .where('sender', '!=', currentUser.id)
       .where('status', '==', 'sent')
       .get();
     const batch = db.batch();
-    incoming.forEach(doc => batch.update(doc.ref, { status: 'read' }));
-
-    // Помечаем свои отправленные сообщения, которые были доставлены, как прочитанные
-    const outgoing = await db.collection('chats').doc(chatId).collection('messages')
-      .where('sender', '==', currentUser.id)
-      .where('status', '==', 'delivered')
-      .get();
-    outgoing.forEach(doc => batch.update(doc.ref, { status: 'read' }));
-
+    msgs.forEach(doc => batch.update(doc.ref, { status: 'read' }));
     await batch.commit();
-
-    // Обновляем счётчик непрочитанных
-    unreadCount -= incoming.size;
+    unreadCount -= msgs.size;
     if (unreadCount < 0) unreadCount = 0;
     updateUnreadBadge();
   }
