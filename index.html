@@ -15,16 +15,70 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
     body { background: #000; min-height: 100dvh; display: flex; justify-content: center; align-items: center; }
-    .app-container { width: 100%; min-height: 100dvh; background: #f2f2f7; display: flex; flex-direction: column; }
+    .app-container { width: 100%; min-height: 100dvh; background: #f2f2f7; display: flex; flex-direction: column; position: relative; overflow: hidden; }
 
     .screen { display: none; flex-direction: column; flex: 1; overflow-y: auto; padding: 20px 16px 20px; background: #f2f2f7; -webkit-overflow-scrolling: touch; }
     .screen.active { display: flex; }
     #mainScreen { overflow: hidden; }
 
-    .tab-bar { display: flex; background: rgba(249,249,249,0.94); backdrop-filter: blur(20px); border-top: 0.5px solid rgba(0,0,0,0.1); padding: 8px 10px 20px; justify-content: space-around; align-items: center; }
-    .tab-btn { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #8e8e93; background: none; border: none; padding: 4px 12px; border-radius: 16px; transition: 0.15s; }
-    .tab-btn.active { color: #007aff; background: rgba(0,122,255,0.12); }
-    .tab-btn span { font-size: 22px; margin-bottom: 2px; }
+    /* Сайдбар */
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 280px;
+      height: 100%;
+      background: #fff;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+      z-index: 2000;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.4);
+      z-index: 1500;
+      display: none;
+    }
+    .sidebar-overlay.show { display: block; }
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      padding: 14px 16px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      font-size: 17px;
+    }
+    .sidebar-item span { font-size: 24px; margin-right: 14px; }
+    .sidebar-item.active { background: rgba(0,122,255,0.12); color: #007aff; font-weight: 600; }
+    .sidebar-item:active { background: rgba(0,0,0,0.05); }
+
+    .section-header {
+      padding: 16px;
+      background: #f2f2f7;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .burger-btn {
+      background: none;
+      border: none;
+      font-size: 28px;
+      cursor: pointer;
+      padding: 4px;
+      width: auto;
+      color: #007aff;
+    }
+    .section-body { flex: 1; overflow-y: auto; padding: 0 16px 12px; }
+
     .ios-input { width: 100%; padding: 14px 16px; background: #fff; border: 1px solid #e5e5ea; border-radius: 12px; font-size: 17px; margin-bottom: 12px; outline: none; }
     .ios-btn { background: #007aff; color: white; border: none; border-radius: 12px; padding: 14px; font-size: 17px; font-weight: 600; width: 100%; margin-top: 6px; cursor: pointer; transition: opacity 0.2s; }
     .ios-btn:active { opacity: 0.7; }
@@ -32,22 +86,16 @@
     .card { background: #fff; border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
     .reminder-item, .chat-item, .task-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 0.5px solid #e5e5ea; }
     .reminder-item:last-child, .chat-item:last-child, .task-item:last-child { border-bottom: none; }
-
     .avatar { width: 48px; height: 48px; border-radius: 12px; background: #c7c7cc; background-size: cover; background-position: center; margin-right: 12px; }
     .chat-item .avatar { margin-left: 8px; }
-
     .profile-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
     .badge { background: #ff3b30; color: #fff; border-radius: 20px; padding: 2px 8px; font-size: 12px; margin-left: 6px; }
-
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); display: none; align-items: flex-end; justify-content: center; z-index: 1000; }
     .modal-sheet { background: #f2f2f7; width: 100%; max-width: 430px; border-radius: 24px 24px 0 0; padding: 20px 16px 30px; animation: slideUp 0.25s ease; }
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     video { width: 100%; max-width: 200px; border-radius: 20px; background: #000; margin: 10px 0; }
 
     #tabContent { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .section-header { padding: 16px; background: #f2f2f7; flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; }
-    .section-body { flex: 1; overflow-y: auto; padding: 0 16px 12px; }
-
     .chat-screen { flex: 1; display: flex; flex-direction: column; background: #fff; min-height: 0; }
     .chat-header { padding: 12px 16px; border-bottom: 0.5px solid #e5e5ea; display: flex; align-items: center; gap: 10px; background: #f9f9f9; cursor: pointer; flex-shrink: 0; }
     .messages-container { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 0; -webkit-overflow-scrolling: touch; }
@@ -65,18 +113,14 @@
     audio { width: 200px; margin: 4px 0; }
     .search-results { background: white; border-radius: 12px; margin-bottom: 10px; }
     .search-result-item { display: flex; align-items: center; padding: 12px; border-bottom: 0.5px solid #e5e5ea; cursor: pointer; }
-
     .date-separator { text-align: center; color: #8e8e93; font-size: 13px; margin: 12px 0 8px; font-weight: 500; }
-
     .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #c7c7cc; margin-left: 2px; }
     .status-dot.read { background: #007aff; }
     .status-dots { display: flex; gap: 2px; margin-left: 4px; }
-
     .user-profile-card { text-align: center; }
     .large-avatar { width: 100px; height: 100px; border-radius: 20px; background-size: cover; background-position: center; margin: 0 auto 16px; }
     .online-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #34c759; margin-right: 4px; }
     .offline-indicator { background: #8e8e93; }
-
     .gallery-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; display: none; align-items: center; justify-content: center; }
     .gallery-image { max-width: 90%; max-height: 80%; border-radius: 20px; object-fit: contain; }
     .gallery-controls { position: absolute; bottom: 20px; display: flex; gap: 20px; }
@@ -85,6 +129,20 @@
 </head>
 <body>
 <div class="app-container" id="appContainer">
+  <!-- Сайдбар и оверлей -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <div class="sidebar" id="sidebar">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <h2 style="font-size:24px;">Slip</h2>
+      <button class="burger-btn" id="closeSidebarBtn" style="font-size:24px;">✕</button>
+    </div>
+    <div class="sidebar-item" data-tab="reminders"><span>⏰</span> Напоминания</div>
+    <div class="sidebar-item" data-tab="tasks"><span>✅</span> Задачи</div>
+    <div class="sidebar-item" data-tab="chats"><span>💬</span> Чаты</div>
+    <div class="sidebar-item" data-tab="profile"><span>👤</span> Профиль</div>
+  </div>
+
+  <!-- Экраны входа/регистрации -->
   <div class="screen active" id="loginScreen">
     <h2 style="font-size:28px; font-weight:700; margin:40px 0 8px;">Вход</h2>
     <input class="ios-input" type="tel" id="loginPhone" placeholder="+71234567890">
@@ -105,14 +163,9 @@
     <button class="ios-btn" id="registerBtn">Зарегистрироваться</button>
   </div>
 
+  <!-- Главный экран -->
   <div class="screen" id="mainScreen">
     <div id="tabContent"></div>
-    <div class="tab-bar" id="tabBar">
-      <button class="tab-btn active" data-tab="reminders"><span>⏰</span>Напоминания</button>
-      <button class="tab-btn" data-tab="tasks"><span>✅</span>Задачи</button>
-      <button class="tab-btn" data-tab="chats"><span>💬</span>Чаты</button>
-      <button class="tab-btn" data-tab="profile"><span>👤</span>Профиль</button>
-    </div>
   </div>
 </div>
 
@@ -143,6 +196,30 @@
   let currentPartnerId = null;
   let lastDate = null;
 
+  // ---- Сайдбар ----
+  const sidebar = document.getElementById('sidebar');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  function openSidebar() {
+    sidebar.classList.add('open');
+    sidebarOverlay.classList.add('show');
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    sidebarOverlay.classList.remove('show');
+  }
+  sidebarOverlay.addEventListener('click', closeSidebar);
+  document.getElementById('closeSidebarBtn').addEventListener('click', closeSidebar);
+  document.querySelectorAll('.sidebar-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const tab = item.dataset.tab;
+      activateTab(tab);
+      closeSidebar();
+      document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+      item.classList.add('active');
+    });
+  });
+
+  // ---- Сжатие изображений ----
   function compressImage(file) {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -179,7 +256,6 @@
 
   const screens = { login: $('#loginScreen'), register: $('#registerScreen'), main: $('#mainScreen') };
   function showScreen(s) { Object.values(screens).forEach(x => x.classList.remove('active')); s.classList.add('active'); }
-
   function phoneToEmail(phone) { return phone.replace(/\s+/g, '') + '@slip.app'; }
 
   auth.onAuthStateChanged(async (user) => {
@@ -226,14 +302,13 @@
     } catch (e) { alert('Ошибка регистрации: ' + e.message); }
   });
 
-  const tabButtons = $$('.tab-btn');
-  tabButtons.forEach(b => b.addEventListener('click', e => activateTab(e.currentTarget.dataset.tab)));
-
   function activateTab(tab) {
     if (currentChatId) closeChatScreen();
-    tabButtons.forEach(b => b.classList.remove('active'));
-    const active = [...tabButtons].find(b => b.dataset.tab === tab);
-    if (active) active.classList.add('active');
+    // Обновляем активный пункт в сайдбаре
+    document.querySelectorAll('.sidebar-item').forEach(i => {
+      i.classList.remove('active');
+      if (i.dataset.tab === tab) i.classList.add('active');
+    });
     renderTabContent(tab);
   }
 
@@ -250,30 +325,46 @@
     switch(tab) {
       case 'reminders':
         container.innerHTML = `
-          <div class="section-header"><h2>Напоминания</h2></div>
+          <div class="section-header">
+            <button class="burger-btn" id="openSidebarBtn">☰</button>
+            <h2>Напоминания</h2>
+          </div>
           <div class="section-body" id="remindersBody"></div>
         `;
+        document.getElementById('openSidebarBtn').addEventListener('click', openSidebar);
         renderReminders(document.getElementById('remindersBody'));
         break;
       case 'tasks':
         container.innerHTML = `
-          <div class="section-header"><h2>Общие задачи</h2></div>
+          <div class="section-header">
+            <button class="burger-btn" id="openSidebarBtn">☰</button>
+            <h2>Общие задачи</h2>
+          </div>
           <div class="section-body" id="tasksBody"></div>
         `;
+        document.getElementById('openSidebarBtn').addEventListener('click', openSidebar);
         renderTasks(document.getElementById('tasksBody'));
         break;
       case 'chats':
         container.innerHTML = `
-          <div class="section-header"><h2>Чаты</h2></div>
+          <div class="section-header">
+            <button class="burger-btn" id="openSidebarBtn">☰</button>
+            <h2>Чаты</h2>
+          </div>
           <div class="section-body" id="chatsBody"></div>
         `;
+        document.getElementById('openSidebarBtn').addEventListener('click', openSidebar);
         renderChats(document.getElementById('chatsBody'));
         break;
       case 'profile':
         container.innerHTML = `
-          <div class="section-header"><h2>Профиль</h2></div>
+          <div class="section-header">
+            <button class="burger-btn" id="openSidebarBtn">☰</button>
+            <h2>Профиль</h2>
+          </div>
           <div class="section-body" id="profileBody"></div>
         `;
+        document.getElementById('openSidebarBtn').addEventListener('click', openSidebar);
         renderProfile(document.getElementById('profileBody'));
         break;
     }
@@ -432,8 +523,6 @@
       </div>
       <div id="chatsList"></div>
     `;
-    // Кнопка создания группового чата теперь в section-header
-    document.getElementById('createGroupChatBtn')?.addEventListener('click', openCreateGroupChatModal);
     const searchInput = $('#searchUserInput');
     const searchResults = $('#searchResults');
     let searchTimeout;
