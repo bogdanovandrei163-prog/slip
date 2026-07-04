@@ -41,16 +41,9 @@
     .sidebar-item:active { background: rgba(0,0,0,0.05); }
 
     .section-header {
-      padding: 16px;
-      background: #ffffff;
-      border-bottom: 0.5px solid rgba(0,0,0,0.1);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      border-radius: 16px;
-      margin: 16px 8px 0;   /* увеличен верхний отступ */
+      padding: 16px; background: #ffffff; border-bottom: 0.5px solid rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05); flex-shrink: 0; display: flex;
+      align-items: center; gap: 12px; border-radius: 16px; margin: 8px 8px 0;
     }
     .burger-btn { background: none; border: none; font-size: 28px; cursor: pointer; padding: 4px; width: auto; color: #007aff; }
     .section-body { flex: 1; overflow-y: auto; padding: 0 16px 12px; }
@@ -71,6 +64,7 @@
     @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
     video { width: 100%; max-width: 200px; border-radius: 20px; background: #000; margin: 10px 0; }
 
+    /* ЧАТ – жёсткая фиксация */
     #tabContent { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
     .chat-screen { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; background: #fff; }
     .chat-header { padding: 12px 16px; border-bottom: 0.5px solid #e5e5ea; display: flex; align-items: center; gap: 10px; background: #f9f9f9; flex-shrink: 0; }
@@ -101,16 +95,7 @@
       min-height: 40px; max-height: 120px; overflow-y: auto; line-height: 1.4;
     }
 
-    .post-card { margin-bottom: 16px; }
-    .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .post-media { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-    .post-media img, .post-media video { width: 100px; height: 100px; object-fit: cover; border-radius: 8px; }
-    .post-actions { display: flex; gap: 12px; margin: 10px 0; }
-    .post-actions button { background: none; border: none; font-size: 16px; cursor: pointer; }
-    .comments-section { margin-top: 10px; }
-    .comment { padding: 6px 0; border-bottom: 0.5px solid #eee; }
-    .create-post-btn { position: sticky; bottom: 10px; margin: 0 16px; }
-
+    /* Остальные вспомогательные стили (галерея, индикатор) */
     .user-profile-card { text-align: center; }
     .large-avatar { width: 100px; height: 100px; border-radius: 20px; background-size: cover; background-position: center; margin: 0 auto 16px; }
     .online-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: #34c759; margin-right: 4px; }
@@ -123,6 +108,7 @@
 </head>
 <body>
 <div class="app-container" id="appContainer">
+  <!-- Сайдбар и оверлей -->
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
   <div class="sidebar" id="sidebar">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -136,6 +122,7 @@
     <div class="sidebar-item" data-tab="settings"><span>👤</span> Настройки</div>
   </div>
 
+  <!-- Экраны входа/регистрации -->
   <div class="screen active" id="loginScreen">
     <h2 style="font-size:28px; font-weight:700; margin:40px 0 8px;">Вход</h2>
     <input class="ios-input" type="tel" id="loginPhone" placeholder="+71234567890">
@@ -154,6 +141,7 @@
     <button class="ios-btn" id="registerBtn">Зарегистрироваться</button>
   </div>
 
+  <!-- Главный экран -->
   <div class="screen" id="mainScreen">
     <div id="tabContent"></div>
   </div>
@@ -181,6 +169,7 @@
   let chatUnsubscribe = null, currentChatId = null, currentPartnerId = null;
   let lastDate = null;
 
+  // Сайдбар
   const sidebar = document.getElementById('sidebar');
   const sidebarOverlay = document.getElementById('sidebarOverlay');
   function openSidebar() { sidebar.classList.add('open'); sidebarOverlay.classList.add('show'); }
@@ -240,14 +229,14 @@
       firebaseUser = user;
       const userDoc = await db.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
-        currentUser = { id: user.uid, ...userDoc.data(), photos: userDoc.data().photos || [], hiddenUsers: userDoc.data().hiddenUsers || [] };
+        currentUser = { id: user.uid, ...userDoc.data(), photos: userDoc.data().photos || [] };
         await db.collection('users').doc(user.uid).update({ lastSeen: firebase.firestore.FieldValue.serverTimestamp() });
         showScreen(screens.main);
         activateTab('interesting');
         initialUnreadCount();
       } else {
         const phone = user.email.split('@')[0];
-        const newUser = { phone, name: phone, age: '', city: '', nick: '', birthdate: '', hidePhone: false, hideBirthdate: false, photos: [], hiddenUsers: [], lastSeen: firebase.firestore.FieldValue.serverTimestamp() };
+        const newUser = { phone, name: phone, age: '', city: '', nick: '', birthdate: '', hidePhone: false, hideBirthdate: false, photos: [], lastSeen: firebase.firestore.FieldValue.serverTimestamp() };
         await db.collection('users').doc(user.uid).set(newUser);
         currentUser = { id: user.uid, ...newUser, lastSeen: new Date() };
         showScreen(screens.main);
@@ -274,7 +263,7 @@
     if (pwd.length < 6) return alert('Пароль минимум 6 символов');
     try {
       const cred = await auth.createUserWithEmailAndPassword(phoneToEmail(phone), pwd);
-      await db.collection('users').doc(cred.user.uid).set({ phone, name, age: '', city: '', nick: '', birthdate: '', hidePhone: false, hideBirthdate: false, photos: [], hiddenUsers: [], lastSeen: firebase.firestore.FieldValue.serverTimestamp() });
+      await db.collection('users').doc(cred.user.uid).set({ phone, name, age: '', city: '', nick: '', birthdate: '', hidePhone: false, hideBirthdate: false, photos: [], lastSeen: firebase.firestore.FieldValue.serverTimestamp() });
     } catch (e) { alert('Ошибка регистрации: ' + e.message); }
   });
 
@@ -310,198 +299,13 @@
     const body = document.getElementById('sectionBody');
 
     switch(tab) {
-      case 'interesting': renderInteresting(body); break;
+      case 'interesting': body.innerHTML = '<p style="padding:20px; text-align:center; color:#8e8e93;">Здесь будет интересный контент</p>'; break;
       case 'reminders': renderReminders(body); break;
       case 'tasks': renderTasks(body); break;
       case 'chats': renderChats(body); break;
       case 'settings': renderProfile(body); break;
       default: body.innerHTML = '<p style="padding:20px; text-align:center; color:#8e8e93;">Раздел не найден</p>';
     }
-  }
-
-  // ========== ИНТЕРЕСНОЕ ==========
-  function renderInteresting(body) {
-    body.innerHTML = '';
-    const createBtn = document.createElement('button');
-    createBtn.className = 'ios-btn create-post-btn';
-    createBtn.textContent = '📷 Поделиться';
-    createBtn.addEventListener('click', openCreatePostModal);
-    body.appendChild(createBtn);
-
-    const postsContainer = document.createElement('div');
-    postsContainer.id = 'postsContainer';
-    body.appendChild(postsContainer);
-
-    unsubscribeReminders = db.collection('posts')
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(snapshot => {
-        postsContainer.innerHTML = '';
-        snapshot.forEach(doc => {
-          const post = { id: doc.id, ...doc.data() };
-          if ((currentUser.hiddenUsers || []).includes(post.authorId)) return;
-          renderPost(post, postsContainer);
-        });
-      });
-  }
-
-  function renderPost(post, container) {
-    const card = document.createElement('div');
-    card.className = 'card post-card';
-    const time = post.createdAt ? new Date(post.createdAt.toDate()).toLocaleString() : '';
-
-    let mediaHTML = '';
-    if (post.media && post.media.length > 0) {
-      mediaHTML = '<div class="post-media">' +
-        post.media.map(url => {
-          if (url.endsWith('.mp4') || url.endsWith('.mov'))
-            return `<video controls src="${url}" style="width:100px; height:100px;"></video>`;
-          else
-            return `<img src="${url}" />`;
-        }).join('') +
-        '</div>';
-    }
-
-    card.innerHTML = `
-      <div class="post-header">
-        <div class="avatar" style="background-image:url(${post.authorPhoto || ''})"></div>
-        <div>
-          <strong>${post.authorName || 'Пользователь'}</strong>
-          <div style="font-size:12px; color:#8e8e93;">${time}</div>
-        </div>
-      </div>
-      <div>${post.text || ''}</div>
-      ${mediaHTML}
-      <div class="post-actions">
-        <button data-reaction="❤️">❤️ ${(post.reactions?.❤️ || []).length}</button>
-        <button data-reaction="😂">😂 ${(post.reactions?.😂 || []).length}</button>
-        <button data-reaction="😮">😮 ${(post.reactions?.😮 || []).length}</button>
-        <button data-reaction="😢">😢 ${(post.reactions?.😢 || []).length}</button>
-        <button data-reaction="👍">👍 ${(post.reactions?.👍 || []).length}</button>
-      </div>
-      ${post.allowComments ? `
-        <div class="comments-section" id="comments-${post.id}"></div>
-        <div style="display:flex; gap:6px;">
-          <input class="ios-input" id="commentInput-${post.id}" placeholder="Комментарий..." style="flex:1; margin-bottom:0;">
-          <button class="ios-btn" id="addCommentBtn-${post.id}" style="width:auto; padding:8px 12px;">Отправить</button>
-        </div>
-      ` : ''}
-    `;
-
-    card.querySelectorAll('[data-reaction]').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const emoji = e.target.dataset.reaction;
-        const postRef = db.collection('posts').doc(post.id);
-        const currentReactions = post.reactions || {};
-        const currentList = currentReactions[emoji] || [];
-        if (currentList.includes(currentUser.id)) {
-          await postRef.update({ [`reactions.${emoji}`]: firebase.firestore.FieldValue.arrayRemove(currentUser.id) });
-        } else {
-          await postRef.update({ [`reactions.${emoji}`]: firebase.firestore.FieldValue.arrayUnion(currentUser.id) });
-        }
-      });
-    });
-
-    if (post.allowComments) {
-      const commentsEl = card.querySelector(`#comments-${post.id}`);
-      const commentInput = card.querySelector(`#commentInput-${post.id}`);
-      const addCommentBtn = card.querySelector(`#addCommentBtn-${post.id}`);
-
-      db.collection('posts').doc(post.id).collection('comments')
-        .orderBy('createdAt', 'asc')
-        .onSnapshot(snapshot => {
-          commentsEl.innerHTML = '';
-          snapshot.forEach(doc => {
-            const c = doc.data();
-            const commentDiv = document.createElement('div');
-            commentDiv.className = 'comment';
-            commentDiv.innerHTML = `<strong>${c.userName}:</strong> ${c.text}`;
-            commentsEl.appendChild(commentDiv);
-          });
-        });
-
-      addCommentBtn.addEventListener('click', async () => {
-        const text = commentInput.value.trim();
-        if (!text) return;
-        await db.collection('posts').doc(post.id).collection('comments').add({
-          userId: currentUser.id,
-          userName: currentUser.name,
-          text,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        commentInput.value = '';
-      });
-    }
-
-    container.appendChild(card);
-  }
-
-  function openCreatePostModal() {
-    const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
-    overlay.style.display = 'flex';
-    overlay.innerHTML = `
-      <div class="modal-sheet">
-        <h3>Новый пост</h3>
-        <textarea class="ios-input" id="postText" placeholder="Что нового?" rows="3"></textarea>
-        <input type="file" id="postMediaInput" accept="image/*,video/*" multiple style="display:none;">
-        <button class="ios-btn secondary" id="addMediaBtn">📷 Добавить фото/видео (до 10)</button>
-        <div id="postMediaPreview" style="display:flex; flex-wrap:wrap; gap:6px; margin:8px 0;"></div>
-        <label><input type="checkbox" id="allowComments" checked> Разрешить комментарии</label>
-        <button class="ios-btn" id="submitPostBtn">Опубликовать</button>
-        <button class="ios-btn secondary" id="closePostModal">Отмена</button>
-      </div>
-    `;
-    document.body.appendChild(overlay);
-    overlay.querySelector('#closePostModal').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-
-    let mediaFiles = [];
-
-    overlay.querySelector('#addMediaBtn').addEventListener('click', () => {
-      const input = overlay.querySelector('#postMediaInput');
-      input.click();
-    });
-
-    overlay.querySelector('#postMediaInput').addEventListener('change', async (e) => {
-      const files = Array.from(e.target.files);
-      if (mediaFiles.length + files.length > 10) return alert('Максимум 10 медиафайлов');
-      for (let file of files) {
-        if (file.size > 2 * 1024 * 1024) return alert('Файл слишком большой (макс 2 МБ)');
-        const compressed = file.type.startsWith('image/') ? await compressImage(file) : await new Promise(resolve => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.readAsDataURL(file);
-        });
-        mediaFiles.push(compressed);
-      }
-      updateMediaPreview();
-    });
-
-    function updateMediaPreview() {
-      const preview = overlay.querySelector('#postMediaPreview');
-      preview.innerHTML = mediaFiles.map(url => {
-        if (url.startsWith('data:image')) return `<img src="${url}" style="width:60px; height:60px; border-radius:8px; object-fit:cover;">`;
-        else return `<video src="${url}" controls style="width:60px; height:60px;"></video>`;
-      }).join('');
-    }
-
-    overlay.querySelector('#submitPostBtn').addEventListener('click', async () => {
-      const text = overlay.querySelector('#postText').value.trim();
-      const allowComments = overlay.querySelector('#allowComments').checked;
-      if (!text && mediaFiles.length === 0) return alert('Добавьте текст или медиа');
-
-      await db.collection('posts').add({
-        authorId: currentUser.id,
-        authorName: currentUser.name,
-        authorPhoto: getMainPhoto(currentUser.photos),
-        text,
-        media: mediaFiles,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        allowComments,
-        reactions: {}
-      });
-      overlay.remove();
-    });
   }
 
   // ========== НАПОМИНАНИЯ ==========
@@ -786,6 +590,7 @@
     currentChatId = chatId;
     const container = $('#tabContent');
     container.classList.add('chat-open');
+    // Абсолютное позиционирование гарантирует, что чат займёт весь tabContent и не будет скролла всей страницы
     container.innerHTML = `
       <div class="chat-screen" id="chatScreen">
         <div class="chat-header" id="chatHeader">
