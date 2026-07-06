@@ -20,10 +20,7 @@
         safari_web_id: "web.onesignal.auto.09714a24-a3bb-414f-8109-d75a4f07e6fa",
         notifyButton: {
           enable: true,
-        },
-        // ↓↓↓ Указываем свой воркер и scope для поддиректории /slip/
-        path: "/slip/OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/slip/" }
+        }
       });
     });
   </script>
@@ -1532,9 +1529,9 @@
   }
 
   // Ручной запрос уведомлений убран — колокольчик OneSignal появится сам
-  // Регистрируем сервис-воркер для поддиректории /slip/
+  // Регистрируем сервис-воркер для корня
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/slip/sw.js', { scope: '/slip/' }).catch(() => {});
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 
   // === Баннер установки PWA для iOS ===
@@ -1546,7 +1543,7 @@
       if (banner) {
         banner.style.display = 'block';
         document.getElementById('pwaInstallBtn').addEventListener('click', function() {
-          alert('Нажмите кнопку «Поделиться» (квадрат со стрелкой) и выберите «На экран «Домой»»');
+          alert('Нажмите кнопку «Поделиться» и выберите «На экран «Домой»»');
         });
       }
     }
