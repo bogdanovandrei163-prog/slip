@@ -1,13 +1,5 @@
 {
-  "name": "Slip",
-  "short_name": "Slip",
-  "start_url": ".",
-  "display": "standalone",
-  "background_color": "#f2f2f7",
-  "theme_color": "#007aff",
-  "icons": [{
-    "src": "icon.png",
-    "sizes": "512x512",
-    "type": "image/png"
-  }]
+  "name": "Gravitec SDK",
+  "gcm_sender_id": "330561634409",
+  "gcm_user_visible_only": true
 }
