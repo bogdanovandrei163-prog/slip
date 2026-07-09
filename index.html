@@ -21,7 +21,6 @@
         notifyButton: {
           enable: true,
         },
-        path: "/sw.js"   // ← чтобы использовать твой сервис-воркер с importScripts
       });
     });
   </script>
@@ -267,12 +266,6 @@
   <div class="screen" id="mainScreen">
     <div id="tabContent"></div>
   </div>
-</div>
-
-<!-- Баннер для iOS: предлагает установить PWA (виден только на iPhone/iPad) -->
-<div id="pwaInstallBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#f2f2f7; padding:16px; text-align:center; border-top:1px solid #ccc; z-index:5000;">
-  <p style="margin-bottom:8px; color:#1c1c1e;">Установите приложение, чтобы получать уведомления</p>
-  <button id="pwaInstallBtn" class="ios-btn" style="width:auto; display:inline-block; padding:10px 24px;">Установить</button>
 </div>
 
 <script>
@@ -1537,21 +1530,6 @@
     Notification.requestPermission();
   }
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
-
-  // === Баннер установки PWA для iOS ===
-  (function() {
-    const isIOS = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
-    const isStandalone = 'standalone' in navigator && navigator.standalone;
-    if (isIOS && !isStandalone) {
-      const banner = document.getElementById('pwaInstallBanner');
-      if (banner) {
-        banner.style.display = 'block';
-        document.getElementById('pwaInstallBtn').addEventListener('click', function() {
-          alert('Нажмите кнопку «Поделиться» (квадрат со стрелкой) и выберите «На экран «Домой»»');
-        });
-      }
-    }
-  })();
 </script>
 </body>
 </html>
