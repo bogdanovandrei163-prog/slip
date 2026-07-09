@@ -42,14 +42,14 @@
           applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
         });
 
-        // 4. Отправляем подписку в Pushwoosh для получения hwid
+        // 4. Отправляем подписку в Pushwoosh (push_token как строка!)
         const response = await fetch('https://cp.pushwoosh.com/json/1.3/registerDevice', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             request: {
               application: PW.applicationCode,
-              push_token: subscription.toJSON(),
+              push_token: JSON.stringify(subscription.toJSON()),  // ← исправлено
               device_type: 11,
               hwid: null
             }
